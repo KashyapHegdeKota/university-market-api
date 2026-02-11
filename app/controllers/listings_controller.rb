@@ -18,15 +18,19 @@ class ListingsController < ApplicationController
   def create
     # For prototype, we default to the first user again
     user = User.first
-    @listing = user.listings.build(listing_params)
+    
+    unless user
+      render json: { error: "No users found. Please seed the database with at least one user." }, status: :not_found
+      return
+    end
 
+    @listing = user.listings.build(listing_params)
     if @listing.save
-      render json: @listing, status: :created
+      render json: {message: "Listing created successfully"}, status: :created
     else
       render json: @listing.errors, status: :unprocessable_entity
     end
   end
-
   private
     def listing_params
       params.require(:listing).permit(:title, :description, :price, :image)
