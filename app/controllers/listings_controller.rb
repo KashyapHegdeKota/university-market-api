@@ -1,16 +1,23 @@
 class ListingsController < ApplicationController
   def index
-    # RESUME PROOF: Using .includes(:user) eliminates N+1 queries.
-    # Without this, Rails would query the User table for every single listing individually.
-    @listings = Listing.includes(:user).all
+    @listings = Listing.includes(:user).with_attached_image.all
+    render json: @listings.map { |listing|
+      listing.as_json(include: { user: { only: [:username] } }).merge(
+        image_url: listing.image.attached? ? url_for(listing.image) : nil
+      )
+    }
+  end
 
-    render json: @listings.as_json(include: { user: { only: [:username] } })
+  def show
+    @listing = Listing.includes(:user).find(params[:id])
+    render json: @listing.as_json(include: { user: { only: [:username] } }).merge(
+      image_url: @listing.image.attached? ? url_for(@listing.image) : nil
+    )
   end
 
   def create
-    # For prototype, we will just assign the first user found
-    user = User.first || User.create(username: "Student_Dev", email: "test@asu.edu")
-    
+    # For prototype, we default to the first user again
+    user = User.first
     @listing = user.listings.build(listing_params)
 
     if @listing.save
@@ -22,6 +29,6 @@ class ListingsController < ApplicationController
 
   private
     def listing_params
-      params.require(:listing).permit(:title, :description, :price)
+      params.require(:listing).permit(:title, :description, :price, :image)
     end
 end
